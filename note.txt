@@ -1,0 +1,377 @@
+Mình đã review [`asignment2.ipynb`](E:/INT3234E_1/module/les2/asg/asignment2.ipynb). Notebook hiện mới hoàn thành khoảng phần đầu của EDA: đọc dữ liệu, chọn 8 mã, tính return, vẽ biểu đồ và phát hiện outlier bằng Z-score.
+
+## Những phần đã làm đúng
+
+- Dùng `prices-split-adjusted.csv`.
+- Chọn 8 mã thuộc nhiều ngành.
+- Sắp xếp theo `symbol`, `date`.
+- Tính return riêng từng mã bằng `groupby`.
+- Tính return trước khi lọc năm 2016 nên ngày đầu năm vẫn so được với cuối năm 2015.
+- Vẽ return và boxplot.
+- Tính Z-score riêng từng mã.
+
+Kiểm tra thực tế trên 8 mã:
+
+- Có **14.096 dòng giá**.
+- Không trùng `(symbol, date)`.
+- Không có dòng vi phạm quy tắc OHLCV.
+- Có 8 giá trị return bị thiếu, chính là ngày đầu tiên của mỗi mã — đây là missing hợp lý do `pct_change()`.
+
+## Những điểm cần sửa
+
+### 1. Tránh `SettingWithCopyWarning`
+
+Cell 7 đang tạo `COMP` nhưng không dùng `.copy()`:
+
+```python
+COMP = prices[prices['symbol'].isin(COMP_SYMBOL)]
+```
+
+Nên chuẩn hóa từ đầu:
+
+```python
+prices['date'] = pd.to_datetime(prices['date'])
+
+prices = prices.sort_values(
+    ['symbol', 'date']
+).reset_index(drop=True)
+
+COMP = prices[
+    prices['symbol'].isin(COMP_SYMBOL)
+].copy()
+```
+
+Dòng này trong cell 7 hiện không tác động lên `COMP` đã tạo trước đó:
+
+```python
+prices = prices.sort_values(['symbol', 'date'])
+```
+
+Nên sort trước rồi mới tạo subset như trên.
+
+### 2. `describe()` hiện quá rộng
+
+`fund.describe()` in ra gần 80 cột nên khó rút ra nhận xét. Hãy chọn nhóm dễ hiểu:
+
+```python
+fund_cols = [
+    'Total Revenue',
+    'Gross Profit',
+    'Operating Income',
+    'Net Income',
+    'Total Assets',
+    'Total Liabilities',
+    'Total Equity',
+    'Net Cash Flow-Operating',
+    'Profit Margin',
+    'Current Ratio',
+    'After Tax ROE',
+    'Earnings Per Share'
+]
+
+fund[fund_cols].describe().T
+```
+
+Với giá, không nên chỉ dùng `prices.describe()` gộp 501 mã vì mỗi cổ phiếu có mức giá khác nhau. Nên thống kê return theo từng mã:
+
+```python
+COMP.groupby('symbol')['return'].describe()
+```
+
+### 3. Không cần in toàn bộ 501 ticker
+
+Cell 5 đang in tất cả mã:
+
+```python
+print(prices['symbol'].unique())
+```
+
+Thay bằng:
+
+```python
+print('Number of symbols:', prices['symbol'].nunique())
+prices['symbol'].value_counts().describe()
+```
+
+## Những phần còn thiếu
+
+### 1. Data overview
+
+Thêm các kết quả:
+
+```python
+fund.shape
+prices.shape
+securities.shape
+
+fund.info()
+prices.info()
+securities.info()
+```
+
+Thêm bảng mô tả vai trò từng file và kiểu dữ liệu: numeric, categorical, datetime, identifier.
+
+### 2. Missing-value analysis
+
+Notebook đã đọc `fundamentals.csv` và `securities.csv` nhưng chưa phân tích missing.
+
+Tạo bảng:
+
+```python
+def missing_summary(df):
+    result = pd.DataFrame({
+        'missing_count': df.isna().sum(),
+        'missing_percent': df.isna().mean() * 100
+    })
+    return result[result['missing_count'] > 0] \
+        .sort_values('missing_count', ascending=False)
+
+missing_summary(fund)
+missing_summary(prices)
+missing_summary(securities)
+```
+
+Trong 8 mã đang chọn:
+
+- `JPM`: thiếu 12 ô fundamentals.
+- `AMZN`: thiếu 3 ô.
+- `BA`: thiếu 3 ô.
+- 5 mã còn lại không thiếu fundamentals.
+
+Hướng xử lý:
+
+- `For Year`: lấy từ `Period Ending`.
+- `Date first added`: giữ NaN hoặc bỏ cột nếu không dùng.
+- Ratio thiếu: tạo missing indicator rồi cân nhắc median/KNN.
+- Không điền mọi missing bằng 0.
+
+Nên giữ hai bảng:
+
+```python
+fund_original = fund.copy()
+fund_clean = fund.copy()
+```
+
+để so sánh trước và sau xử lý.
+
+### 3. Kiểm tra duplicate và dữ liệu sai
+
+Thêm:
+
+```python
+price_duplicates = prices.duplicated(
+    subset=['symbol', 'date']
+).sum()
+
+fund_duplicates = fund.duplicated(
+    subset=['Ticker Symbol', 'Period Ending']
+).sum()
+
+security_duplicates = securities.index.duplicated().sum()
+```
+
+Kiểm tra OHLC:
+
+```python
+invalid_ohlc = COMP[
+    (COMP['low'] > COMP['open']) |
+    (COMP['low'] > COMP['close']) |
+    (COMP['high'] < COMP['open']) |
+    (COMP['high'] < COMP['close']) |
+    (COMP['volume'] < 0)
+]
+```
+
+Hiện tại mình đã kiểm tra và không có dòng sai trong 8 mã, nhưng vẫn nên có code và nhận xét trong bài.
+
+### 4. Cell “IQR” hiện chưa thực sự tính IQR
+
+Cell 10 chỉ vẽ boxplot. Boxplot giúp nhìn outlier nhưng chưa tạo ngưỡng IQR.
+
+Cần tính:
+
+```python
+grouped = COMP_2016.groupby('symbol')['return']
+
+q1 = grouped.transform(lambda x: x.quantile(0.25))
+q3 = grouped.transform(lambda x: x.quantile(0.75))
+iqr = q3 - q1
+
+COMP_2016['iqr_outlier'] = (
+    (COMP_2016['return'] < q1 - 1.5 * iqr) |
+    (COMP_2016['return'] > q3 + 1.5 * iqr)
+)
+```
+
+Sau đó tổng hợp:
+
+```python
+COMP_2016.groupby('symbol')['iqr_outlier'].sum()
+```
+
+Trong dữ liệu 2016, IQR đánh dấu khoảng **9–27 dòng mỗi mã**, còn Z-score chỉ đánh dấu khoảng **2–6 dòng**. Đây là kết quả hay để nhận xét:
+
+> IQR nhạy hơn Z-score vì return cổ phiếu không hoàn toàn tuân theo phân phối chuẩn.
+
+### 5. Trực quan hóa vị trí outlier
+
+Hiện notebook chỉ in DataFrame outlier. Nên đánh dấu chúng trên biểu đồ:
+
+```python
+stock = COMP_2016[COMP_2016['symbol'] == 'AAPL']
+marked = stock[stock['z_score'].abs() > 3]
+
+plt.plot(stock['date'], stock['return'])
+plt.scatter(
+    marked['date'],
+    marked['return'],
+    color='red',
+    label='Outlier'
+)
+plt.legend()
+plt.show()
+```
+
+Có thể chọn 2–3 mã để biểu đồ không quá nhiều.
+
+### 6. Xử lý outlier
+
+Notebook mới phát hiện, chưa xử lý. Với dữ liệu stock nên:
+
+- Giữ return gốc.
+- Tạo cột `is_outlier`.
+- Tạo thêm phiên bản winsorized nếu cần so sánh.
+- Không xóa biến động thị trường thật.
+
+```python
+COMP_2016['is_outlier'] = (
+    COMP_2016['iqr_outlier'] |
+    (COMP_2016['z_score'].abs() > 3)
+)
+```
+
+Có thể tổng hợp:
+
+```python
+COMP_2016.groupby('symbol')['is_outlier'].agg(
+    ['sum', 'mean']
+)
+```
+
+### 7. Feature engineering
+
+Thêm các biến:
+
+```python
+COMP['intraday_range'] = (
+    (COMP['high'] - COMP['low']) / COMP['open']
+)
+
+COMP['log_volume'] = np.log1p(COMP['volume'])
+
+COMP['volatility_20d'] = (
+    COMP.groupby('symbol')['return']
+    .transform(lambda x: x.rolling(20).std())
+)
+
+COMP['relative_volume'] = (
+    COMP['volume'] /
+    COMP.groupby('symbol')['volume']
+        .transform(lambda x: x.rolling(20).mean())
+)
+```
+
+Sau đó khám phá:
+
+- Return và volume.
+- Return và volatility.
+- Outlier có đi cùng volume spike hay không.
+- Ngành nào có volatility cao hơn.
+
+### 8. Ghép thông tin ngành
+
+`securities` đã được đọc nhưng chưa sử dụng:
+
+```python
+metadata = (
+    securities[
+        ['Security', 'GICS Sector', 'GICS Sub Industry']
+    ]
+    .reset_index()
+)
+
+COMP = COMP.merge(
+    metadata,
+    left_on='symbol',
+    right_on='Ticker symbol',
+    how='left',
+    validate='many_to_one'
+)
+```
+
+Sau đó so sánh:
+
+```python
+COMP.groupby('GICS Sector')['return'].agg(
+    ['mean', 'std', 'min', 'max']
+)
+```
+
+Vì chỉ có một công ty mỗi ngành, phần này nên được mô tả là so sánh các cổ phiếu đại diện, chưa phải kết luận cho toàn ngành.
+
+### 9. Transformation và encoding
+
+Để minh họa Lesson 2:
+
+```python
+COMP['log_volume'] = np.log1p(COMP['volume'])
+
+sector_encoded = pd.get_dummies(
+    COMP['GICS Sector'],
+    prefix='sector',
+    dtype=int
+)
+```
+
+Nếu chưa huấn luyện mô hình thì chỉ cần trình bày kết quả trước/sau transformation, chưa cần fit toàn bộ pipeline.
+
+### 10. Imbalance chỉ cần khám phá
+
+Tạo nhãn mô tả ngày giảm mạnh:
+
+```python
+COMP['is_large_drop'] = (
+    COMP['return'] <= -0.05
+).astype(int)
+```
+
+Xem phân phối:
+
+```python
+COMP['is_large_drop'].value_counts()
+COMP['is_large_drop'].value_counts(normalize=True) * 100
+```
+
+Ở giai đoạn này chỉ cần:
+
+- Vẽ class distribution.
+- Nhận xét lớp giảm mạnh rất hiếm.
+- Trình bày SMOTE/undersampling là hướng xử lý sau này.
+
+Chưa cần chạy mô hình hoặc đánh giá accuracy.
+
+## Thứ tự nên bổ sung
+
+1. Thêm Markdown giới thiệu mục tiêu và dataset.
+2. Sửa bước load, parse date, sort và `.copy()`.
+3. Thêm shape, type, missing và duplicate.
+4. Kiểm tra OHLC consistency.
+5. Phân tích và xử lý missing fundamentals.
+6. Tính IQR thật sự.
+7. Đánh dấu outlier trên biểu đồ.
+8. Tạo `intraday_range`, `log_volume`, volatility và relative volume.
+9. Ghép sector.
+10. Khám phá imbalance.
+11. Viết Markdown kết luận những gì đã làm và chưa làm.
+
+Notebook hiện có nền đúng, nhưng còn thiên về code thử nghiệm. Phần nên ưu tiên nhất là **thêm bảng kiểm tra chất lượng dữ liệu và các đoạn Markdown giải thích kết quả**, vì đó mới thể hiện bạn hiểu data exploration và data preparation.

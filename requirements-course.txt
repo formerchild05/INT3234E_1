@@ -1,0 +1,25 @@
+# Notebook environment
+jupyterlab
+ipykernel
+
+# Data processing and scientific computing
+numpy
+pandas
+scipy
+
+# Visualization and missing-data exploration
+matplotlib
+seaborn
+plotly
+missingno
+
+# Machine learning, resampling, and time-series models
+scikit-learn
+imbalanced-learn
+statsmodels
+
+# Boosting models and hyperparameter optimization used by the course notebooks
+xgboost
+lightgbm
+catboost
+optuna
