@@ -61,3 +61,30 @@
 
 - For the eight-symbol subset, defining 1 as next return > 0 and 0 as next return <= 0 yields 7,253 up rows (51.484%) and 6,835 non-up rows (48.516%) among 14,088 valid targets. There are 83 exactly-zero next returns inside class 0. For 2016 the split is 1,070 up (53.287%) versus 938 non-up (46.713%). This target is sufficiently balanced, so SMOTE/undersampling is not justified; use the rare sharp-drop target if the assignment needs a meaningful imbalance-handling demonstration.
 
+## Lesson 3 cleaning notebook (2026-09-14)
+
+- `module/les3/asg/asignment3.ipynb` is now scoped to AMZN only and contains a cleanly structured, cleaning-only pipeline for the full 2010-2016 history. It does not filter 2016 or create returns, rolling indicators, targets, scaling, RFECV, or PCA.
+- It loads adjusted prices, fundamentals, and securities; validates price missingness, duplicate keys, positive prices/nonnegative volume, and OHLC ordering; prepares AMZN metadata; and handles AMZN's three missing fundamentals with audit flags.
+- A full sequential run passed: `prices_clean` is 1,762 x 7, `metadata_clean` is 1 x 4, and `fund_clean` is 4 x 81. All three outputs have zero duplicate keys and zero remaining missing cells. AMZN's missing For Year, estimated shares, and EPS in the latest row were filled by the documented rules. A scan found no stale ticker names or mojibake in the notebook.
+
+## AMZN-only Lesson 3 scope (2026-09-14)
+
+- The user reset the main study scope to AMZN only. The recommended task remains next-observation direction classification after market close: target 1 when next adjusted close is above the current adjusted close, else 0.
+- AMZN has 1,762 daily rows from 2010-01-04 through 2016-12-30 and 1,761 valid next-observation targets: 913 up (51.846%) and 848 non-up. Chronological counts are 645/613 up/non-up for 2010-2014, 130/122 for 2015, and 138/114 for 2016. This target needs no imbalance treatment.
+- For the AMZN-only predictive matrix, use normalized lagged price/return, momentum, rolling-volatility, intraday, and relative-volume features. Exclude date, the constant symbol and sector, raw identifier fields, the target, and annual fundamentals. Fundamentals have only four AMZN rows and no trusted public-availability dates, so they remain a cleaning demonstration rather than model input.
+
+## Recommended AMZN feature design (2026-09-14)
+
+- Use a compact 21-feature numeric matrix at end of day t: returns over 1/5/20/60 sessions; close-to-MA ratios over 5/20/60; MA5-to-MA20 and MA20-to-MA60 ratios; return volatility over 5/20/60; relative volume versus prior-only 5/20/60-session means; one-day volume change and log volume; intraday range, candle body, overnight gap, and close position.
+- The horizons encode current shock (1), trading week (5), trading month (20), and trading quarter/regime (60). They provide correlated multi-scale variables for PCA/RFECV while the maximum warm-up removes only about 3.4% of AMZN's 1,762 rows. Treat these windows as hypotheses and assess alternatives only with training/validation data, never the 2016 test set.
+- Exclude raw date, constant symbol/sector, annual fundamentals, raw OHLC price levels, future next-close fields, and the target from X. Build deterministic lag/rolling features on the full ordered AMZN history, then split chronologically; fit scaling and dimensionality reduction on training data only.
+
+## AMZN feature implementation (2026-09-14)
+
+- module/les3/asg/asignment3.ipynb now implements all 25 agreed AMZN features after the cleaning summary: 1/5/10/20/60-session returns; four close-to-MA ratios and two MA-ratio features; 5/10/20/60-session return volatility; log volume, one-session log-volume change, four prior-only relative-volume ratios; and four intraday/gap features. No target, chronological split, scaling, RFE/RFECV, or PCA has been added yet.
+- The notebook explicitly audits natural warm-up missingness and creates eatures_ready by dropping rows missing any selected feature. A sequential run and direct formula checks passed: 25 unique feature names, 1,702 ready rows from 1,762 inputs, 60 warm-up rows removed, first ready date 2010-03-31, last date 2016-12-30, and zero infinite values.
+- Moving averages and volatility include day t because prediction is assumed after the close. Relative-volume baselines exclude day t with shift(1). The old feature-name placeholder and an empty cell were removed, and the duplicate AMZN scope constant was cleaned up.
+
+## AMZN target balance table (2026-09-14)
+
+- module/les3/asg/asignment3.ipynb now creates an overall label_balance table after model_data, with label meaning, count, percentage, total observations, and majority/minority ratio. The executed result on the 1,701 feature-complete labeled rows is class 0: 818 (48.09%), class 1: 883 (51.91%), majority/minority ratio 1.079. The table sums to 100% and its counts equal len(model_data), so the target is acceptably balanced overall. Balance should be checked again per chronological split after train/validation/test are created.

@@ -11,7 +11,9 @@
 - Do not commit or push only to save context.
 
 
-## Current course focus (2026-09-13)
+## Current course focus (2026-09-14)
+
+- The active Lesson 3 study scope is now AMZN only. Use next-observation direction as the balanced target and exclude annual fundamentals from the daily prediction matrix; details are in .agents/KNOWLEDGE_COURSE.md.
 
 - Use the verified diverse stock subset recorded in `module/dataset/CONTEXT.md`. Current scope is Lesson 2 exploration and preparation without model training.
 
