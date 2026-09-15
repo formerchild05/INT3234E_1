@@ -1,6 +1,6 @@
 # Knowledge index
 
-- Updated: 2026-09-12.
+- Updated: 2026-09-15.
 - Answer the user in Vietnamese. Store context in English ASCII using UTF-8.
 - For every prompt, read `module/dataset/CONTEXT.md` immediately after this file to load the shared dataset context.
 - For CAMEF paper work, read and update `.agents/KNOWLEDGE_PAPER.md`.
@@ -14,6 +14,8 @@
 ## Current course focus (2026-09-14)
 
 - The active Lesson 3 study scope is now AMZN only. Use next-observation direction as the balanced target and exclude annual fundamentals from the daily prediction matrix; details are in .agents/KNOWLEDGE_COURSE.md.
+
+- Current module/les3/asg/asignment3.ipynb split cells still need correction before modeling: create eature_data['target_date'] = feature_data['date'].shift(-1) before constructing model_data; then drop missing feature/target/target-date rows. Define boolean Series masks from model_data['target_date'], not filtered DataFrames. Recommended baselines are a DummyClassifier(strategy='prior') and a standardized Logistic Regression using all 25 features. Tune RFECV/PCA on time-ordered train/validation data and evaluate the chosen pipeline once on the untouched 2016 test set.
 
 - Use the verified diverse stock subset recorded in `module/dataset/CONTEXT.md`. Current scope is Lesson 2 exploration and preparation without model training.
 

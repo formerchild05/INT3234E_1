@@ -88,3 +88,13 @@
 ## AMZN target balance table (2026-09-14)
 
 - module/les3/asg/asignment3.ipynb now creates an overall label_balance table after model_data, with label meaning, count, percentage, total observations, and majority/minority ratio. The executed result on the 1,701 feature-complete labeled rows is class 0: 818 (48.09%), class 1: 883 (51.91%), majority/minority ratio 1.079. The table sums to 100% and its counts equal len(model_data), so the target is acceptably balanced overall. Balance should be checked again per chronological split after train/validation/test are created.
+
+## AMZN target-date split review (2026-09-15)
+
+- The current notebook creates 	arget_date = model_data.date.shift(-1) after the final targetless source row has already been removed. The time ranges are non-overlapping, but this makes the last valid modeled row (feature date 2016-12-29, outcome date 2016-12-30) receive NaT and disappear from every split. The executed current split is train 1,197, validation 252, test 251, sum 1,700 versus 1,701 model rows.
+- Correct by creating 	arget_date = feature_data.date.shift(-1) alongside 
+ext_close, before creating model_data, and include target_date in the required nonmissing subset. Then split by target_date: before 2015 train, calendar 2015 validation, calendar 2016 test. Expected sizes are 1,197, 252, and 252, summing to all 1,701 rows. The notebook itself was reviewed only and not edited.
+## AMZN modeling baseline decision (2026-09-15)
+
+- The user chose to omit the dummy baseline and use a standardized Logistic Regression fitted on all 25 engineered features as the main baseline. Fit on train only, compare RFECV/PCA alternatives using validation, and leave the 2016 test split untouched until the final configuration is selected.
+- The notebook baseline implementation was reviewed and is leakage-safe: Pipeline(StandardScaler(), LogisticRegression(max_iter=2000)) is fitted only on 1,197 train rows and evaluated on 252 validation rows; the 252-row test set remains untouched. Validation metrics are accuracy 0.5000, balanced accuracy 0.5030, precision 0.5196, recall 0.4077, F1 0.4569, and ROC-AUC 0.5221, with confusion matrix TN=73, FP=49, FN=77, TP=53. This is a weak near-random baseline suitable for comparing RFECV and PCA. For clarity, include 	arget_date in the model_data.dropna subset even though it is missing on the same final row as 	arget_up in the current single-symbol construction.
