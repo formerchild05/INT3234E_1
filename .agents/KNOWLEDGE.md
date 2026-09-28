@@ -1,9 +1,10 @@
 # Knowledge index
 
-- Updated: 2026-09-15.
+- Updated: 2026-09-29.
 - Answer the user in Vietnamese. Store context in English ASCII using UTF-8.
 - For every prompt, read `module/dataset/CONTEXT.md` immediately after this file to load the shared dataset context.
 - For CAMEF paper work, read and update `.agents/KNOWLEDGE_PAPER.md`.
+- The latest CAMEF implementation findings are summarized in .agents/KNOWLEDGE_PAPER.md.
 - For course lessons and the current stock dataset, read and update `.agents/KNOWLEDGE_COURSE.md`.
 - Read both only when a request explicitly connects the paper and course work.
 - Scientific-paper work uses `.agents/skills/paper-study/SKILL.md`.

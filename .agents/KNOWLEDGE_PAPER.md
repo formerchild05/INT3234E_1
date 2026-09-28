@@ -2,14 +2,14 @@
 
 ## Scope and sources
 
-- Updated: 2026-09-12.
+- Updated: 2026-09-29.
 - Current paper: `pp/2502.04592v3.pdf`.
 - Title: CAMEF: Causal-Augmented Multi-Modality Event-Driven Financial Forecasting by Integrating Time Series Patterns and Salient Macroeconomic Announcements.
 - Authors: Yang Zhang, Wenbo Yang, Jun Wang, Qiang Ma, Jie Xiong. KDD 2025; arXiv v3 dated 2025-08-08. DOI: 10.1145/3711896.3736872.
-- The user requested a beginner-friendly explanation of the topic, problem, and solution. No implementation or reproduction has been requested.
+- Current code-review focus: map CAMEF Equations 7-8 to the repository multimodal fusion implementation.
 - Primary PDF sections inspected: abstract/introduction p. 1; problem p. 3; data and counterfactuals pp. 4-5; architecture and loss pp. 5-7; experiments and ablations pp. 7-8; conclusion p. 9; Appendix C.2 p. 12.
 - HTML cross-check: `https://arxiv.org/html/2502.04592v3`.
-- Official repository: `https://github.com/lakebodhi/CAMEF`. Its README was inspected. Code, datasets, and weights have not been downloaded or inspected.
+- Official repository: `https://github.com/lakebodhi/CAMEF`. A local copy is under `CAMEF/`; the fusion model implementation has now been inspected.
 
 ## Verified findings
 
@@ -25,7 +25,7 @@
 ## Assessment and next checks
 
 - Assistant assessment: counterfactual contrastive text may improve representations and forecasts, but the objective and prediction errors alone do not establish real-world causal identification. Keep this assessment separate from the authors' causal claims.
-- No implementation or reproduction has been performed.
+- Code inspection (not a full runtime reproduction): `CAMEF/CAMEF/model/CAMEF.py` defines `fuse_project` at lines 74-78 as `Linear(1536,1024) -> GELU -> Linear(1024,768)`, not the hypothesized `1024 -> 1024` second layer. In `predict_batch_contrastive` (lines 230-236) and `predict_single_case` (lines 277-283), text and series tensors `[B,768]` are stacked to `[B,2,768]`, reshaped to `[B,1536]`, then passed through `fuse_project` to `[B,768]`. There is no explicit transpose or matrix multiplication; `nn.Linear` acts on the last dimension. The ordinary `forward` method (lines 110-132) does not call `fuse_project`; it concatenates two tokens to `[1,2,768]` and sends them directly through GPT-2. No custom initialization for `fuse_project` is present, so PyTorch `nn.Linear` defaults apply.
 - Open questions: chronological splitting, overlapping-window leakage, counterfactual quality, tensor dimensions, normalization, and trading profitability.
 - For future explanations, introduce intuition before equations.
 - For reproduction, inspect Appendices B-C and source code, prioritizing split strategy, normalization, and information timing.
