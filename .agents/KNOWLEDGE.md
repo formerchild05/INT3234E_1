@@ -1,11 +1,12 @@
-# Knowledge index
+﻿# Knowledge index
 
-- Updated: 2026-09-29.
+- Updated: 2026-09-30.
 - Answer the user in Vietnamese. Store context in English ASCII using UTF-8.
 - For every prompt, read `module/dataset/CONTEXT.md` immediately after this file to load the shared dataset context.
 - For CAMEF paper work, read and update `.agents/KNOWLEDGE_PAPER.md`.
 - The latest CAMEF implementation findings are summarized in .agents/KNOWLEDGE_PAPER.md.
 - For course lessons and the current stock dataset, read and update `.agents/KNOWLEDGE_COURSE.md`.
+- Lesson 5's verified knowledge map (stationarity, decomposition, MA, exponential smoothing, ARIMA, and brief deep-learning coverage) is stored in .agents/KNOWLEDGE_COURSE.md.
 - Read both only when a request explicitly connects the paper and course work.
 - Scientific-paper work uses `.agents/skills/paper-study/SKILL.md`.
 - Context summaries do not replace primary evidence or newer user instructions.
@@ -35,3 +36,4 @@
 - Outlier-context feature decision: compute intraday range, log volume, prior-20-day mean volume, relative volume, and prior-20-day return volatility on the full sorted `COMP` before filtering 2016. Use `shift(1).rolling(20)` for volume and volatility baselines so the current outlier does not contaminate its own reference window. Recreate `COMP_2016` afterward and rerun downstream cells. Treat the first rolling NaNs as expected history-window gaps, not values to impute. For EDA, define volume spike as relative volume >= 2 and high prior volatility using a per-symbol descriptive threshold; summarize outliers with these context flags rather than removing them.
 
 - Notebook cell 14 diagnosis (2026-09-13): `KeyError: Label(s) ['high_prior_volatility'] do not exist` occurs because `volatility_20` is created in cell 7 but the Boolean `high_prior_volatility` column is never created before aggregation. Fix by computing each symbol's 2016 Q3 of `volatility_20` with groupby-transform, then setting `high_prior_volatility = volatility_20 > Q3` before filtering `outlier_rows`. The corrected pipeline was run read-only and completed successfully.
+
